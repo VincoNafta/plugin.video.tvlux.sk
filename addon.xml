@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<addon id="plugin.video.tvlux.sk"
+version="1.0.0"
+name="Televízia LUX"
+provider-name="VincoNafta">
+<requires>
+    <import addon="xbmc.python" version="3.0.0"/>
+    <import addon="script.module.beautifulsoup4" version="4.6.2"/>
+    <import addon="script.module.urllib3" version="1.26.9"/>
+</requires>
+<extension point="xbmc.python.pluginsource" library="main.py">
+  <provides>video</provides>
+</extension>
+<extension point="xbmc.addon.metadata">
+  <summary lang="en">Archive tv lux</summary>
+  <summary lang="sk">Archív televízie lux</summary>
+  <description lang="sk_SK">Sledujte relácie z TV LUX už piamo v kodi</description>
+  <disclaimer lang="sk_SK">Všetky videá su k dispozicii z webovej stránky
+  doplnok je len simuláciou prehliadača
+  </disclaimer>
+    <disclaimer lang="sk_SK">All videos are free from oficial website
+    Addon is only webbrowser simulation</disclaimer>
+  <assets>
+    <icon>icon.jpg</icon>
+    <fanart>fanart.jpg</fanart>
+  </assets>
+  <news>Spustenie doplnku</news>
+</extension>
+</addon>
