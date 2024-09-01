@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <addon id="plugin.video.tvlux.sk"
-version="1.0.0"
+version="1.1.0"
 name="Televízia LUX"
 provider-name="VincoNafta">
 <requires>
@@ -18,7 +18,7 @@ provider-name="VincoNafta">
   <disclaimer lang="sk_SK">Všetky videá su k dispozicii z webovej stránky
   doplnok je len simuláciou prehliadača
   </disclaimer>
-    <disclaimer lang="sk_SK">All videos are free from oficial website
+  <disclaimer lang="en_GB">All videos are free from oficial website
     Addon is only webbrowser simulation</disclaimer>
   <assets>
     <icon>icon.png</icon>
