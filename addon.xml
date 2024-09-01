@@ -21,7 +21,7 @@ provider-name="VincoNafta">
     <disclaimer lang="sk_SK">All videos are free from oficial website
     Addon is only webbrowser simulation</disclaimer>
   <assets>
-    <icon>icon.jpg</icon>
+    <icon>icon.png</icon>
   </assets>
   <news>Spustenie doplnku</news>
 </extension>
