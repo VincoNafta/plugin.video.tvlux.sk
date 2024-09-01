@@ -3,6 +3,3 @@ rules:
   - base: master
     upstream: VincoNafta:master
     mergeMethod: hardreset
-  - base: leia
-    upstream: wombat01:leia
-    mergeMethod: hardreset
