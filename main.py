@@ -1,20 +1,12 @@
-# -*- coding: utf-8 -*-
-# Module: default
-# Author: Roman V. M.
-# Created on: 28.11.2014
 # License: GPL v.3 https://www.gnu.org/copyleft/gpl.html
 
 import sys
 from urllib.parse import urlencode
 from urllib.parse import parse_qsl
-
-import xbmc
-#from urlparse import parse_qsl
 import xbmcgui
 import xbmcplugin
 import urllib3
 from bs4 import BeautifulSoup
-
 
 # Get the plugin url in plugin:// notation.
 _url = sys.argv[0]
@@ -24,18 +16,17 @@ _handle = int(sys.argv[1])
 
 def search(page):
     user_agent = {'user-agent': "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:129.0) Gecko/20100101 Firefox/129.0"}
-    http = urllib3.PoolManager(100, headers=user_agent)
-    # Get the page content with the correct encoding to handle Unicode
-    # response = http.request("GET","https://www.tvlux.sk/archiv/relacia/a-teraz-co/?id=a-teraz-co&relacia=300&iPage=1")
-    # print(response.data.decode("utf-8"))
+    http = urllib3.PoolManager(1, headers=user_agent)
     return http.request("GET", page)
 
 
-first_data = search("https://www.tvlux.sk/archiv/abecedne/vsetko")
-
-bsObsah = BeautifulSoup(first_data.data, "html.parser")
 def get_url(**kwargs):
     return '{0}?{1}'.format(_url, urlencode(kwargs))
+
+
+def get_video_page_src(video_page_url):
+    return BeautifulSoup(search(video_page_url).data.decode("utf-8"), "html.parser")
+
 
 def list_categories():
     """
@@ -48,8 +39,19 @@ def list_categories():
     # for this type of content.
     xbmcplugin.setContent(_handle, 'videos')
 
+    live_header = "[COLOR FFEE0000]Živé vysielanie[/COLOR]"
+    live_item = xbmcgui.ListItem(label=live_header)
+    live_item.setInfo('video', {'title': live_header,
+                                'mediatype': 'video'})
+    livestream = "https://stream.tvlux.sk/lux/ngrp:lux.stream_all/chunklist_b2652000.m3u8"
+
+    get_url(action='play', video=livestream)
+    xbmcplugin.addDirectoryItem(_handle, livestream, live_item, False)
+
+    first_data = search("https://www.tvlux.sk/archiv/abecedne/vsetko")
     # Iterate through the div elements with video categories.
-    div_content = bsObsah.findAll("div", class_="col-md-6 col-lg-3 rel-identification")
+    div_content = (BeautifulSoup(first_data.data, "html.parser").
+                   findAll("div", class_="col-md-6 col-lg-3 rel-identification"))
     for r in div_content:
         # Extract video information
         nazov = r.find("h3").text.strip()  # Title
@@ -77,28 +79,23 @@ def list_categories():
         url = get_url(action='listing', category=nazov, url=odkaz)
         xbmcplugin.addDirectoryItem(_handle, url, list_item, True)
 
-    # Add a sort method for the virtual folder items (alphabetically, ignore articles)
-    xbmcplugin.addSortMethod(_handle, xbmcplugin.SORT_METHOD_LABEL_IGNORE_THE)
-    # Finish creating a virtual folder.
     xbmcplugin.endOfDirectory(_handle)
 
-def getVideoAdress(videoUrl):
-    # html = http.request("GET", videoUrl)
-    html = search(videoUrl)
 
-    videoPageSrc = BeautifulSoup(html.data.decode("utf-8"), "html.parser")
-    return videoPageSrc.find("source")["src"].strip()
+def get_video_adress(page_src):
+    return page_src.find("source")["src"].strip()
 
-def getVideoDescription(videoUrl):
-    html = search(videoUrl)
-    videoPageSrc = BeautifulSoup(html.data.decode("utf-8"), "html.parser")
-    return videoPageSrc.find("p").text.strip()
+
+def get_video_description(page_src):
+    return page_src.find("p").text.strip()
+
 
 def list_videos(category, url):
     """
     Create the list of playable videos in the Kodi interface.
     :param category: Category name
     :type category: str
+    :type url: address to page with video thumbnails
     """
     # Set plugin category. It is displayed in some skins as the name of the current section.
     xbmcplugin.setPluginCategory(_handle, category)
@@ -106,23 +103,22 @@ def list_videos(category, url):
     xbmcplugin.setContent(_handle, 'videos')
 
     # Get the list of videos in the category.
-    videos_raw_datas = search(url)
-    videos = BeautifulSoup(videos_raw_datas.data.decode("utf-8"), "html.parser")
-
+    # videos_raw_datas = search(url)
     # Find all video items
-    video_list_content = videos.findAll("div", class_="archive-item")
+    video_list_content = (BeautifulSoup(search(url).data.decode("utf-8"), "html.parser")
+                          .findAll("div", class_="archive-item"))
 
     # Iterate through videos.
     for video in video_list_content:
         nazov = video.find("h4").text.strip()  # Title
         odkaz = video.find("a")["href"]  # Full URL of the video
         obrazok = video.find("img")["src"]  # Image URL
-        datum = video.find("div", class_="tag dark").text.strip()
         list_item = xbmcgui.ListItem(label=nazov)
 
+        video_page_src = get_video_page_src(odkaz)
         # Set additional info for the list item.
         list_item.setInfo('video', {'title': nazov,
-                                    'plot': getVideoDescription(odkaz),
+                                    'plot': get_video_description(video_page_src),
                                     'mediatype': 'video'})
         # Set graphics for the list item.
         list_item.setArt({'thumb': obrazok, 'icon': obrazok, 'fanart': obrazok})
@@ -130,13 +126,9 @@ def list_videos(category, url):
         list_item.setProperty('IsPlayable', 'true')
 
         # Create a URL for the video playback
-        url = get_url(action='play', video=getVideoAdress(odkaz))
+        url = get_url(action='play', video=get_video_adress(video_page_src))
+        xbmcplugin.addDirectoryItem(_handle, url, list_item, False)
 
-        # Add the list item to Kodi directory
-        is_folder = False
-        xbmcplugin.addDirectoryItem(_handle, url, list_item, is_folder)
-
-    # Add a sort method for the virtual folder items (alphabetically, ignore articles)
     xbmcplugin.addSortMethod(_handle, xbmcplugin.SORT_METHOD_LABEL_IGNORE_THE)
     # Finish creating a virtual folder.
     xbmcplugin.endOfDirectory(_handle)
@@ -150,6 +142,7 @@ def play_video(path):
     :type path: str
     """
     # Create a playable item with a path to play.
+    # xbmc.log(path)
     play_item = xbmcgui.ListItem(path=path)
     # Pass the item to the Kodi player.
     xbmcplugin.setResolvedUrl(_handle, True, listitem=play_item)

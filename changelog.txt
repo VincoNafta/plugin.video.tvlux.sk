@@ -1,0 +1,4 @@
+[B]1.2.0[/B]
+- Added livestream
+[B]1.0.0[/B]
+- first version with simple archive
