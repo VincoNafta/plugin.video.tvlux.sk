@@ -8,9 +8,7 @@ import xbmcplugin
 import urllib3
 from bs4 import BeautifulSoup
 
-# Get the plugin url in plugin:// notation.
 _url = sys.argv[0]
-# Get the plugin handle as an integer number.
 _handle = int(sys.argv[1])
 
 
@@ -49,7 +47,6 @@ def list_categories():
     xbmcplugin.addDirectoryItem(_handle, livestream, live_item, False)
 
     first_data = search("https://www.tvlux.sk/archiv/abecedne/vsetko")
-    # Iterate through the div elements with video categories.
     div_content = (BeautifulSoup(first_data.data, "html.parser").
                    findAll("div", class_="col-md-6 col-lg-3 rel-identification"))
     for r in div_content:
@@ -78,7 +75,6 @@ def list_categories():
         # Add the item to Kodi
         url = get_url(action='listing', category=nazov, url=odkaz)
         xbmcplugin.addDirectoryItem(_handle, url, list_item, True)
-
     xbmcplugin.endOfDirectory(_handle)
 
 
@@ -97,40 +93,40 @@ def list_videos(category, url):
     :type category: str
     :type url: address to page with video thumbnails
     """
-    # Set plugin category. It is displayed in some skins as the name of the current section.
     xbmcplugin.setPluginCategory(_handle, category)
-    # Set plugin content. It allows Kodi to select appropriate views for this type of content.
     xbmcplugin.setContent(_handle, 'videos')
+    archive_page_content = (BeautifulSoup(search(url).data.decode("utf-8"), "html.parser"))
 
-    # Get the list of videos in the category.
-    # videos_raw_datas = search(url)
-    # Find all video items
-    video_list_content = (BeautifulSoup(search(url).data.decode("utf-8"), "html.parser")
-                          .findAll("div", class_="archive-item"))
-
-    # Iterate through videos.
-    for video in video_list_content:
+    for video in archive_page_content.findAll("div", class_="archive-item"):
         nazov = video.find("h4").text.strip()  # Title
         odkaz = video.find("a")["href"]  # Full URL of the video
         obrazok = video.find("img")["src"]  # Image URL
         list_item = xbmcgui.ListItem(label=nazov)
 
         video_page_src = get_video_page_src(odkaz)
-        # Set additional info for the list item.
         list_item.setInfo('video', {'title': nazov,
                                     'plot': get_video_description(video_page_src),
                                     'mediatype': 'video'})
-        # Set graphics for the list item.
         list_item.setArt({'thumb': obrazok, 'icon': obrazok, 'fanart': obrazok})
-        # Set 'IsPlayable' property to 'true'.
         list_item.setProperty('IsPlayable', 'true')
 
-        # Create a URL for the video playback
         url = get_url(action='play', video=get_video_adress(video_page_src))
         xbmcplugin.addDirectoryItem(_handle, url, list_item, False)
 
-    xbmcplugin.addSortMethod(_handle, xbmcplugin.SORT_METHOD_LABEL_IGNORE_THE)
-    # Finish creating a virtual folder.
+    pages = archive_page_content.find("ul", class_="a-list")
+    if pages is not None:
+        next_button = pages.find("a", class_="chevronRight")
+        if next_button is not None:
+            next_button_url = next_button.get("href")
+            if next_button_url:
+                list_item = xbmcgui.ListItem(label='Ďalšie Epizódy')
+                list_item.setInfo('video', {
+                    'title': 'Ďalšie Epizódy',
+                    'mediatype': 'video'
+                })
+                url = get_url(action='listing', category=category, url=next_button_url.strip())
+                xbmcplugin.addDirectoryItem(_handle, url, list_item, True)
+    # xbmcplugin.addSortMethod(_handle, xbmcplugin.SORT_METHOD_LABEL_IGNORE_THE)
     xbmcplugin.endOfDirectory(_handle)
 
 
@@ -141,10 +137,7 @@ def play_video(path):
     :param path: Fully-qualified video URL
     :type path: str
     """
-    # Create a playable item with a path to play.
-    # xbmc.log(path)
     play_item = xbmcgui.ListItem(path=path)
-    # Pass the item to the Kodi player.
     xbmcplugin.setResolvedUrl(_handle, True, listitem=play_item)
 
 
@@ -159,26 +152,16 @@ def router(paramstring):
     # Parse a URL-encoded paramstring to the dictionary of
     # {<parameter>: <value>} elements
     params = dict(parse_qsl(paramstring))
-    # Check the parameters passed to the plugin
     if params:
         if params['action'] == 'listing':
-            # Display the list of videos in a provided category.
             list_videos(params["category"], params['url'])
         elif params['action'] == 'play':
-            # Play a video from a provided URL.
             play_video(params['video'])
         else:
-            # If the provided paramstring does not contain a supported action
-            # we raise an exception. This helps to catch coding errors,
-            # e.g. typos in action names.
             raise ValueError('Invalid paramstring: {0}!'.format(paramstring))
     else:
-        # If the plugin is called from Kodi UI without any parameters,
-        # display the list of video categories
         list_categories()
 
 
 if __name__ == '__main__':
-    # Call the router function and pass the plugin call parameters to it.
-    # We use string slicing to trim the leading '?' from the plugin call paramstring
     router(sys.argv[2][1:])
