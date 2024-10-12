@@ -3,6 +3,9 @@
 import sys
 from urllib.parse import urlencode
 from urllib.parse import parse_qsl
+from dateutil.parser import parse
+
+import xbmc
 import xbmcgui
 import xbmcplugin
 import urllib3
@@ -85,6 +88,10 @@ def get_video_adress(page_src):
 def get_video_description(page_src):
     return page_src.find("p").text.strip()
 
+def convert_date(str_date):
+    date_text = str_date.get_text(strip=True)
+    t_date = parse(date_text, dayfirst=True).date()
+    return t_date.isoformat()
 
 def list_videos(category, url):
     """
@@ -101,12 +108,20 @@ def list_videos(category, url):
         nazov = video.find("h4").text.strip()  # Title
         odkaz = video.find("a")["href"]  # Full URL of the video
         obrazok = video.find("img")["src"]  # Image URL
+        parsed_date = video.find("div", class_="tag dark")
         list_item = xbmcgui.ListItem(label=nazov)
 
         video_page_src = get_video_page_src(odkaz)
-        list_item.setInfo('video', {'title': nazov,
-                                    'plot': get_video_description(video_page_src),
-                                    'mediatype': 'video'})
+
+        premier_date = convert_date(parsed_date)
+        info_labels = {'title': nazov,
+                       'plot': get_video_description(video_page_src),
+                       'mediatype': 'video'}
+        if premier_date:
+            info_labels['premiered'] = premier_date
+
+        list_item.setInfo('video', info_labels)
+
         list_item.setArt({'thumb': obrazok, 'icon': obrazok, 'fanart': obrazok})
         list_item.setProperty('IsPlayable', 'true')
 

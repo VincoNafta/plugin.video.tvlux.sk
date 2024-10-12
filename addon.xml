@@ -1,12 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <addon id="plugin.video.tvlux.sk"
-version="1.3.0"
+version="1.4.0"
 name="Televízia LUX"
 provider-name="VincoNafta">
 <requires>
     <import addon="xbmc.python" version="3.0.0"/>
     <import addon="script.module.beautifulsoup4" version="4.6.2"/>
     <import addon="script.module.urllib3" version="1.26.9"/>
+    <import addon="script.module.dateutil" version="2.8.1"/>
 </requires>
 <extension point="xbmc.python.pluginsource" library="main.py">
   <provides>video</provides>
