@@ -44,7 +44,7 @@ def list_categories():
     live_item = xbmcgui.ListItem(label=live_header)
     live_item.setInfo('video', {'title': live_header,
                                 'mediatype': 'video'})
-    livestream = "https://stream.tvlux.sk/lux/ngrp:lux.stream_all/chunklist_b2652000.m3u8"
+    livestream = "https://stream.tvlux.sk/luxtv/luxtv-livestream/playlist.m3u8"
 
     get_url(action='play', video=livestream)
     xbmcplugin.addDirectoryItem(_handle, livestream, live_item, False)
@@ -171,6 +171,8 @@ def router(paramstring):
         if params['action'] == 'listing':
             list_videos(params["category"], params['url'])
         elif params['action'] == 'play':
+            play_video(params['video'])
+        elif params['action'] == 'play_video':
             play_video(params['video'])
         else:
             raise ValueError('Invalid paramstring: {0}!'.format(paramstring))
