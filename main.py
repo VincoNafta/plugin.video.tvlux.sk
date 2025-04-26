@@ -42,8 +42,10 @@ def list_categories():
 
     live_header = "[COLOR FFEE0000]Živé vysielanie[/COLOR]"
     live_item = xbmcgui.ListItem(label=live_header)
-    live_item.setInfo('video', {'title': live_header,
-                                'mediatype': 'video'})
+    info_tag = live_item.getVideoInfoTag()
+    info_tag.setTitle(live_header)
+    info_tag.setMediaType('video')
+
     livestream = "https://stream.tvlux.sk/luxtv/luxtv-livestream/playlist.m3u8"
 
     get_url(action='play', video=livestream)
@@ -69,12 +71,11 @@ def list_categories():
             'fanart': obrazok
         })
 
-        # Set additional info for the list item.
-        list_item.setInfo('video', {
-            'title': nazov,
-            'genre': zaner,
-            'mediatype': 'video'
-        })
+        info_tag = list_item.getVideoInfoTag()
+        info_tag.setTitle(nazov)
+        info_tag.setGenres([zaner])
+        info_tag.setMediaType('video')
+
         # Add the item to Kodi
         url = get_url(action='listing', category=nazov, url=odkaz)
         xbmcplugin.addDirectoryItem(_handle, url, list_item, True)
@@ -88,10 +89,12 @@ def get_video_adress(page_src):
 def get_video_description(page_src):
     return page_src.find("p").text.strip()
 
+
 def convert_date(str_date):
     date_text = str_date.get_text(strip=True)
     t_date = parse(date_text, dayfirst=True).date()
     return t_date.isoformat()
+
 
 def list_videos(category, url):
     """
@@ -114,13 +117,22 @@ def list_videos(category, url):
         video_page_src = get_video_page_src(odkaz)
 
         premier_date = convert_date(parsed_date)
-        info_labels = {'title': nazov,
-                       'plot': get_video_description(video_page_src),
-                       'mediatype': 'video'}
-        if premier_date:
-            info_labels['premiered'] = premier_date
+        # info_labels = {'title': nazov,
+        #                'plot': get_video_description(video_page_src),
+        #                'mediatype': 'video'}
+        # if premier_date:
+        #     info_labels['premiered'] = premier_date
+        #
+        # list_item.setInfo('video', info_labels)
 
-        list_item.setInfo('video', info_labels)
+        info_tag = list_item.getVideoInfoTag()
+
+        info_tag.setTitle(nazov)
+        info_tag.setPlot(get_video_description(video_page_src))
+        info_tag.setMediaType('video')
+
+        if premier_date:
+            info_tag.setPremiered(premier_date)
 
         list_item.setArt({'thumb': obrazok, 'icon': obrazok, 'fanart': obrazok})
         list_item.setProperty('IsPlayable', 'true')
@@ -135,10 +147,10 @@ def list_videos(category, url):
             next_button_url = next_button.get("href")
             if next_button_url:
                 list_item = xbmcgui.ListItem(label='Ďalšie Epizódy')
-                list_item.setInfo('video', {
-                    'title': 'Ďalšie Epizódy',
-                    'mediatype': 'video'
-                })
+                info_tag = list_item.getVideoInfoTag()
+                info_tag.setTitle('Ďalšie Epizódy')
+                info_tag.setMediaType('video')
+
                 url = get_url(action='listing', category=category, url=next_button_url.strip())
                 xbmcplugin.addDirectoryItem(_handle, url, list_item, True)
     # xbmcplugin.addSortMethod(_handle, xbmcplugin.SORT_METHOD_LABEL_IGNORE_THE)
