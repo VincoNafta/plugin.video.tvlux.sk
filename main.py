@@ -3,31 +3,22 @@
 import sys
 from urllib.parse import urlencode
 from urllib.parse import parse_qsl
-from dateutil.parser import parse
+
 
 import xbmc
 import xbmcgui
 import xbmcplugin
-import urllib3
-from bs4 import BeautifulSoup
+
+from PageRequester import search
+import ListRealtions as Lr
+import ListVideos as Lv
 
 _url = sys.argv[0]
 _handle = int(sys.argv[1])
 
 
-def search(page):
-    user_agent = {'user-agent': "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:129.0) Gecko/20100101 Firefox/129.0"}
-    http = urllib3.PoolManager(1, headers=user_agent)
-    return http.request("GET", page)
-
-
 def get_url(**kwargs):
     return '{0}?{1}'.format(_url, urlencode(kwargs))
-
-
-def get_video_page_src(video_page_url):
-    return BeautifulSoup(search(video_page_url).data.decode("utf-8"), "html.parser")
-
 
 def list_categories():
     """
@@ -51,15 +42,30 @@ def list_categories():
     get_url(action='play', video=livestream)
     xbmcplugin.addDirectoryItem(_handle, livestream, live_item, False)
 
-    first_data = search("https://www.tvlux.sk/archiv/abecedne/vsetko")
-    div_content = (BeautifulSoup(first_data.data, "html.parser").
-                   findAll("div", class_="col-md-6 col-lg-3 rel-identification"))
-    for r in div_content:
+    # Archív
+    archive_header = "Archív"
+    archive_item = xbmcgui.ListItem(label=archive_header)
+    info_tag = archive_item.getVideoInfoTag()
+    info_tag.setTitle(archive_header)
+    archive_url = get_url(action='archive')
+    xbmcplugin.addDirectoryItem(
+        _handle, archive_url, archive_item, True
+    )
+
+    xbmcplugin.endOfDirectory(_handle)
+
+def list_archive():
+    xbmcplugin.setPluginCategory(_handle, 'Videos')
+    # Set plugin content. It allows Kodi to select appropriate views
+    # for this type of content.
+    xbmcplugin.setContent(_handle, 'videos')
+
+    for r in Lr.getRelationRawData():
         # Extract video information
-        nazov = r.find("h3").text.strip()  # Title
-        odkaz = r.find("a")["href"].strip()  # URL of the video
-        obrazok = r.find("img")["src"].strip()  # Image URL
-        zaner = r.find("div", class_="tag-blue").text.strip()
+        nazov = Lr.getRelationName(r)
+        odkaz = Lr.getRelationLink(r)
+        obrazok = Lr.getRelationImg(r)
+        zaner = Lr.getRelationGenre(r)
 
         # Create a list item with a text label and a thumbnail image.
         list_item = xbmcgui.ListItem(label=nazov)
@@ -82,18 +88,6 @@ def list_categories():
     xbmcplugin.endOfDirectory(_handle)
 
 
-def get_video_adress(page_src):
-    return page_src.find("source")["src"].strip()
-
-
-def get_video_description(page_src):
-    return page_src.find("p").text.strip()
-
-
-def convert_date(str_date):
-    date_text = str_date.get_text(strip=True)
-    t_date = parse(date_text, dayfirst=True).date()
-    return t_date.isoformat()
 
 
 def list_videos(category, url):
@@ -105,30 +99,22 @@ def list_videos(category, url):
     """
     xbmcplugin.setPluginCategory(_handle, category)
     xbmcplugin.setContent(_handle, 'videos')
-    archive_page_content = (BeautifulSoup(search(url).data.decode("utf-8"), "html.parser"))
+    archive_page_content = Lv.getVideoItems(url)
 
-    for video in archive_page_content.findAll("div", class_="archive-item"):
+    for video in archive_page_content.find_all("div", class_="archive-item"):
         nazov = video.find("h4").text.strip()  # Title
         odkaz = video.find("a")["href"]  # Full URL of the video
         obrazok = video.find("img")["src"]  # Image URL
         parsed_date = video.find("div", class_="tag dark")
         list_item = xbmcgui.ListItem(label=nazov)
 
-        video_page_src = get_video_page_src(odkaz)
+        video_page_src = Lv.get_video_page_src(odkaz)
 
-        premier_date = convert_date(parsed_date)
-        # info_labels = {'title': nazov,
-        #                'plot': get_video_description(video_page_src),
-        #                'mediatype': 'video'}
-        # if premier_date:
-        #     info_labels['premiered'] = premier_date
-        #
-        # list_item.setInfo('video', info_labels)
-
+        premier_date = Lv.convert_date(parsed_date)
         info_tag = list_item.getVideoInfoTag()
 
         info_tag.setTitle(nazov)
-        info_tag.setPlot(get_video_description(video_page_src))
+        info_tag.setPlot(Lv.get_video_description(video_page_src))
         info_tag.setMediaType('video')
 
         if premier_date:
@@ -137,7 +123,7 @@ def list_videos(category, url):
         list_item.setArt({'thumb': obrazok, 'icon': obrazok, 'fanart': obrazok})
         list_item.setProperty('IsPlayable', 'true')
 
-        url = get_url(action='play', video=get_video_adress(video_page_src))
+        url = get_url(action='play', video=Lv.get_video_adress(video_page_src))
         xbmcplugin.addDirectoryItem(_handle, url, list_item, False)
 
     pages = archive_page_content.find("ul", class_="a-list")
@@ -182,6 +168,8 @@ def router(paramstring):
     if params:
         if params['action'] == 'listing':
             list_videos(params["category"], params['url'])
+        elif params['action'] == 'archive':
+            list_archive()
         elif params['action'] == 'play':
             play_video(params['video'])
         elif params['action'] == 'play_video':
